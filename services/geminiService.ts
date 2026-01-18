@@ -30,6 +30,14 @@ export class GeminiService {
             properties: {
               simpleExplanation: { type: Type.STRING },
               hindiExplanation: { type: Type.STRING },
+              grammarFocus: {
+                type: Type.OBJECT,
+                properties: {
+                  topic: { type: Type.STRING },
+                  rule: { type: Type.STRING }
+                },
+                required: ["topic", "rule"]
+              },
               correctExamples: { type: Type.ARRAY, items: { type: Type.STRING } },
               commonMistakes: { type: Type.ARRAY, items: { type: Type.STRING } },
               practiceSuggestion: { type: Type.STRING },
@@ -56,6 +64,7 @@ export class GeminiService {
             required: [
               "simpleExplanation", 
               "hindiExplanation", 
+              "grammarFocus",
               "correctExamples", 
               "commonMistakes", 
               "practiceSuggestion", 
@@ -81,10 +90,110 @@ export class GeminiService {
     }
   }
 
+  async validatePracticeInput(userSentence: string, topic: string, context: string, overrideApiKey?: string): Promise<{ isCorrect: boolean; feedback: string; correctedSentence?: string }> {
+    const apiKey = overrideApiKey || process.env.API_KEY;
+    const ai = new GoogleGenAI({ apiKey });
+
+    const prompt = `
+      Task: Act as an English Grammar Teacher.
+      Topic: ${topic}
+      Context/Drill: ${context}
+      Student Input: "${userSentence}"
+
+      Analyze the Student Input.
+      1. Is it grammatically correct?
+      2. Does it make sense in the context of the drill?
+      
+      Return JSON:
+      {
+        "isCorrect": boolean,
+        "feedback": "string (Short, helpful explanation of the mistake or praise)",
+        "correctedSentence": "string (The corrected version if incorrect, otherwise null)"
+      }
+    `;
+
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              isCorrect: { type: Type.BOOLEAN },
+              feedback: { type: Type.STRING },
+              correctedSentence: { type: Type.STRING, nullable: true }
+            },
+            required: ["isCorrect", "feedback"]
+          }
+        }
+      });
+
+      return JSON.parse(response.text || "{}");
+    } catch (error) {
+      console.error("Validation Error:", error);
+      // Fallback if API fails
+      return { isCorrect: false, feedback: "Could not validate at the moment. Please double check your grammar.", correctedSentence: undefined };
+    }
+  }
+
+  async fetchStarterPrompts(userGoal?: string, overrideApiKey?: string): Promise<Array<{ label: string; query: string }>> {
+    const apiKey = overrideApiKey || process.env.API_KEY;
+    const ai = new GoogleGenAI({ apiKey });
+    
+    const prompt = `
+      Generate 4 short, engaging, and diverse English learning queries for a student.
+      Student Goal: ${userGoal || "General Spoken English Improvement"}
+      
+      Requirements:
+      1. 'label': Short, catchy title (max 3 words). e.g., "Fix Grammar", "Job Interview".
+      2. 'query': The actual full question the student would ask an AI tutor. e.g., "Check this sentence for grammar mistakes..."
+      
+      Return strictly a JSON array:
+      [
+        { "label": "string", "query": "string" },
+        ...
+      ]
+    `;
+
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: {
+             type: Type.ARRAY,
+             items: {
+                type: Type.OBJECT,
+                properties: {
+                   label: { type: Type.STRING },
+                   query: { type: Type.STRING }
+                },
+                required: ["label", "query"]
+             }
+          }
+        }
+      });
+      return JSON.parse(response.text || "[]");
+    } catch (e) {
+      console.warn("Failed to fetch prompts", e);
+      // Fallback
+      return [
+        { label: "Describe Picture", query: "Describe a busy market scene in English." },
+        { label: "Job Interview", query: "Help me prepare for a job interview introduction." },
+        { label: "Email Writing", query: "How to write a formal leave application?" },
+        { label: "Idioms", query: "Teach me 3 popular business idioms." }
+      ];
+    }
+  }
+
   private getInvalidTopicResponse(): PedagogicalResponse {
     return {
       simpleExplanation: DENIAL_MESSAGE,
       hindiExplanation: "मैं केवल अंग्रेजी संचार कौशल में मदद करने के लिए बनाया गया हूं।",
+      grammarFocus: { topic: "Invalid Topic", rule: "N/A" },
       correctExamples: [],
       commonMistakes: [],
       practiceSuggestion: "",

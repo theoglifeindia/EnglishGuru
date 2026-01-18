@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { PedagogicalResponse, ResponseMode, LLMProvider } from './types.ts';
 import { GeminiService } from './services/geminiService.ts';
 import ResponseView from './components/ResponseView.tsx';
@@ -10,6 +10,13 @@ const STORAGE_KEY_PROVIDER = 'eg_llm_provider';
 const STORAGE_KEY_API_KEY = 'eg_api_key';
 const STORAGE_KEY_USER_NAME = 'eg_user_name';
 const STORAGE_KEY_GOAL = 'eg_user_goal';
+
+const DEFAULT_CHIPS = [
+  { label: '📚 Explain "Tenses"', query: 'Explain "Tenses" in Hindi', color: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
+  { label: '🤝 Business Etiquette', query: 'Business meeting etiquette', color: 'bg-blue-100 text-blue-800 border-blue-200' },
+  { label: '👋 Greeting Mistakes', query: 'Common greeting mistakes', color: 'bg-amber-100 text-amber-800 border-amber-200' },
+  { label: '🎤 Self Introduction', query: 'Interview self-introduction', color: 'bg-fuchsia-100 text-fuchsia-800 border-fuchsia-200' }
+];
 
 const App: React.FC = () => {
   const [query, setQuery] = useState('');
@@ -24,12 +31,21 @@ const App: React.FC = () => {
   const [userName, setUserName] = useState<string>('');
   const [userGoal, setUserGoal] = useState<string>('');
 
-  // Load settings from session storage on mount
+  // Suggestions State
+  const [suggestionChips, setSuggestionChips] = useState(DEFAULT_CHIPS);
+  const [isRefreshingChips, setIsRefreshingChips] = useState(false);
+
+  const textAreaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Load settings from storage on mount
   useEffect(() => {
-    const savedProvider = sessionStorage.getItem(STORAGE_KEY_PROVIDER);
+    // Persistent settings (localStorage)
+    const savedProvider = localStorage.getItem(STORAGE_KEY_PROVIDER);
+    const savedName = localStorage.getItem(STORAGE_KEY_USER_NAME);
+    const savedGoal = localStorage.getItem(STORAGE_KEY_GOAL);
+    
+    // Session-only settings (sessionStorage)
     const savedKey = sessionStorage.getItem(STORAGE_KEY_API_KEY);
-    const savedName = sessionStorage.getItem(STORAGE_KEY_USER_NAME);
-    const savedGoal = sessionStorage.getItem(STORAGE_KEY_GOAL);
     
     if (savedProvider) setProvider(savedProvider as LLMProvider);
     if (savedKey) setUserApiKey(savedKey);
@@ -43,10 +59,13 @@ const App: React.FC = () => {
     setUserName(newName);
     setUserGoal(newGoal);
     
-    sessionStorage.setItem(STORAGE_KEY_PROVIDER, newProvider);
+    // Save persistent settings to localStorage
+    localStorage.setItem(STORAGE_KEY_PROVIDER, newProvider);
+    localStorage.setItem(STORAGE_KEY_USER_NAME, newName);
+    localStorage.setItem(STORAGE_KEY_GOAL, newGoal);
+    
+    // Save API key to sessionStorage (cleared when tab closes)
     sessionStorage.setItem(STORAGE_KEY_API_KEY, newKey);
-    sessionStorage.setItem(STORAGE_KEY_USER_NAME, newName);
-    sessionStorage.setItem(STORAGE_KEY_GOAL, newGoal);
   };
 
   const handleProcessQuery = async (e: React.FormEvent) => {
@@ -75,42 +94,73 @@ const App: React.FC = () => {
     }
   };
 
-  // Bilingual suggestion chips
-  const suggestionChips = [
-    { label: 'Explain "Tenses" (काल समझाएं)', query: 'Explain "Tenses" in Hindi' },
-    { label: 'Business Etiquette (बिज़नेस शिष्टाचार)', query: 'Business meeting etiquette' },
-    { label: 'Greeting Mistakes (अभिवादन की गलतियाँ)', query: 'Common greeting mistakes' },
-    { label: 'Self Introduction (अपना परिचय दें)', query: 'Interview self-introduction' }
-  ];
+  const handleSuggestionPrompt = (professionalPrompt: string) => {
+    setQuery(professionalPrompt);
+    // Smooth scroll to top to show the input box
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Focus the textarea so user can hit enter
+    if (textAreaRef.current) {
+      textAreaRef.current.focus();
+    }
+  };
+
+  const handleRefreshChips = async () => {
+    setIsRefreshingChips(true);
+    try {
+      const gemini = new GeminiService();
+      // If user has a goal, prompts will be aligned to it
+      const newPrompts = await gemini.fetchStarterPrompts(userGoal, userApiKey);
+      
+      if (newPrompts && newPrompts.length > 0) {
+        const colors = [
+          'bg-emerald-100 text-emerald-800 border-emerald-200',
+          'bg-blue-100 text-blue-800 border-blue-200',
+          'bg-amber-100 text-amber-800 border-amber-200',
+          'bg-fuchsia-100 text-fuchsia-800 border-fuchsia-200'
+        ];
+        
+        const coloredPrompts = newPrompts.map((p, i) => ({
+          ...p,
+          color: colors[i % colors.length]
+        }));
+        
+        setSuggestionChips(coloredPrompts);
+      }
+    } catch (e) {
+      console.error("Failed to refresh chips", e);
+    } finally {
+      setIsRefreshingChips(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50">
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-xl shadow-md">
+    <div className="min-h-screen flex flex-col font-[Outfit]">
+      <header className="bg-violet-600 text-white shadow-lg sticky top-0 z-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+          <div className="flex items-center gap-4 group cursor-pointer" onClick={() => window.location.reload()}>
+            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-violet-600 font-extrabold text-2xl shadow-inner transform group-hover:rotate-6 transition-transform duration-300">
               EG
             </div>
             <div>
-              <h1 className="text-xl font-bold text-slate-900 leading-tight">English Guru</h1>
-              <p className="text-xs text-slate-500 font-medium">Learn English Clearly, Confidently, Correctly</p>
+              <h1 className="text-2xl font-black tracking-tight group-hover:text-violet-100 transition-colors">English Guru</h1>
+              <p className="text-xs text-violet-200 font-medium tracking-wider uppercase opacity-80">AI Communication Coach</p>
             </div>
           </div>
           
           <div className="flex items-center gap-4">
+            <span className="hidden sm:inline-flex items-center px-3 py-1 rounded-full bg-violet-800/50 border border-violet-500/50 text-xs font-bold uppercase tracking-wider text-violet-100">
+              {provider === LLMProvider.GEMINI ? '✨ Gemini Powered' : '🤖 GPT Powered'}
+            </span>
             <button 
               onClick={() => setIsSettingsOpen(true)}
-              className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+              className="p-3 bg-white/10 hover:bg-white/20 rounded-xl transition-all hover:scale-105 active:scale-95"
               title="Settings"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </button>
-            <span className="text-xs text-indigo-600 font-bold bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100 uppercase tracking-tighter hidden sm:inline-block">
-              {provider === LLMProvider.GEMINI ? 'Gemini PhD' : 'GPT Expert'} Mode
-            </span>
           </div>
         </div>
       </header>
@@ -125,16 +175,17 @@ const App: React.FC = () => {
         initialGoal={userGoal}
       />
 
-      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+      <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 w-full">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-8 space-y-8">
-            <form onSubmit={handleProcessQuery} className="space-y-4">
-              <div className="relative group">
+            <div className="bg-white p-2 rounded-[2rem] shadow-xl shadow-violet-100 border border-slate-100">
+              <form onSubmit={handleProcessQuery} className="relative">
                 <textarea
+                  ref={textAreaRef}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder={userName ? `Ask me anything, ${userName}...` : "Ask me: 'Explain Present Continuous tense', 'How to sound professional in meetings?', etc."}
-                  className="w-full h-32 bg-white border border-slate-200 rounded-xl p-6 shadow-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-lg resize-none"
+                  placeholder={userName ? `Hi ${userName}! What do you want to learn today?` : "Type something like: 'How to use Present Perfect Tense?'"}
+                  className="w-full h-36 bg-slate-50 rounded-[1.5rem] p-6 pr-24 focus:bg-white border-2 border-transparent focus:border-violet-400 outline-none transition-all text-lg resize-none placeholder-slate-400 text-slate-700"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
@@ -145,93 +196,111 @@ const App: React.FC = () => {
                 <button
                   type="submit"
                   disabled={isLoading || !query.trim()}
-                  className={`absolute bottom-4 right-4 p-3 rounded-full shadow-lg transition-all ${isLoading || !query.trim() ? 'bg-slate-200 text-slate-400 cursor-not-allowed' : 'bg-indigo-600 text-white hover:bg-indigo-700 hover:scale-105 active:scale-95'}`}
+                  className={`absolute bottom-3 right-3 w-14 h-14 flex items-center justify-center rounded-2xl shadow-lg transition-all transform duration-200 ${
+                    isLoading || !query.trim() 
+                    ? 'bg-slate-200 text-slate-400 cursor-not-allowed' 
+                    : 'bg-gradient-to-br from-violet-500 to-fuchsia-600 text-white hover:scale-105 hover:shadow-violet-200 active:scale-95'
+                  }`}
                 >
                   {isLoading ? (
-                    <svg className="animate-spin h-6 w-6" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-white"></div>
                   ) : (
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    <svg className="w-7 h-7 translate-x-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3" />
                     </svg>
                   )}
                 </button>
-              </div>
+              </form>
+            </div>
 
-              <div className="flex flex-wrap gap-2">
-                {suggestionChips.map((chip) => (
-                  <button
-                    key={chip.label}
-                    type="button"
-                    onClick={() => setQuery(chip.query)}
-                    className="text-xs font-semibold bg-white border border-slate-200 px-3 py-1.5 rounded-full text-slate-500 hover:border-indigo-300 hover:text-indigo-600 transition-colors shadow-sm"
-                  >
-                    {chip.label}
-                  </button>
-                ))}
-              </div>
-            </form>
+            <div className="flex flex-wrap gap-3 items-center">
+              {suggestionChips.map((chip, index) => (
+                <button
+                  key={`${chip.label}-${index}`}
+                  type="button"
+                  onClick={() => setQuery(chip.query)}
+                  className={`text-sm font-bold px-4 py-2 rounded-xl border-b-4 hover:border-b-0 hover:translate-y-1 transition-all ${chip.color} shadow-sm`}
+                >
+                  {chip.label}
+                </button>
+              ))}
+              
+              <button
+                type="button"
+                onClick={handleRefreshChips}
+                disabled={isRefreshingChips}
+                className="ml-auto p-2 bg-slate-100 hover:bg-violet-100 text-slate-500 hover:text-violet-600 rounded-xl transition-all active:scale-95 disabled:opacity-50"
+                title="Refresh Topics aligned to Goal"
+              >
+                 <span className={`block text-xl ${isRefreshingChips ? 'animate-spin' : ''}`}>🔄</span>
+              </button>
+            </div>
 
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-6 py-4 rounded-xl flex items-center gap-3">
-                <svg className="w-6 h-6 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" /></svg>
-                <p className="font-medium">{error}</p>
+              <div className="bg-red-50 border-2 border-red-100 text-red-600 px-6 py-4 rounded-2xl flex items-center gap-4 animate-in slide-in-from-top-2">
+                <div className="bg-red-100 p-2 rounded-full shrink-0">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                </div>
+                <p className="font-bold">{error}</p>
               </div>
             )}
 
             {response ? (
-              <ResponseView response={response} />
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <ResponseView response={response} apiKey={userApiKey} />
+              </div>
             ) : !isLoading && !error && (
-              <div className="bg-white border-2 border-dashed border-slate-200 rounded-xl py-20 px-8 flex flex-col items-center text-center">
-                 <div className="bg-indigo-50 p-4 rounded-full mb-4">
-                    <svg className="w-10 h-10 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                    </svg>
+              <div className="bg-white/60 backdrop-blur-sm border-2 border-dashed border-violet-100 rounded-[2rem] py-16 px-8 flex flex-col items-center text-center">
+                 <div className="w-24 h-24 bg-violet-100 rounded-full flex items-center justify-center mb-6 shadow-inner">
+                    <span className="text-5xl">🎓</span>
                  </div>
-                 <h2 className="text-2xl font-bold text-slate-800 mb-2">Ready to Learn?</h2>
-                 <p className="text-slate-500 max-w-md">
+                 <h2 className="text-3xl font-black text-slate-800 mb-3 tracking-tight">Ready to Master English?</h2>
+                 <p className="text-slate-500 text-lg max-w-lg leading-relaxed">
                     {userName 
-                      ? `Hi ${userName}! I'm your English guru.${userGoal ? ' I\'ll help you reach your goal: ' + userGoal : ''}` 
-                      : "I'm your PhD-level English guru. Ask a question or paste a sentence, and I'll break it down with simple explanations and Hindi support!"}
+                      ? <span dangerouslySetInnerHTML={{__html: `Hi <strong class="text-violet-600">${userName}</strong>! ${userGoal ? 'Let\'s work on your goal: <em>' + userGoal + '</em>' : 'Ask me anything!'}`}} />
+                      : "I'm your friendly PhD-level Guru. Ask a question, and I'll explain it simply with Hindi support!"}
                  </p>
               </div>
             )}
           </div>
 
-          <div className="lg:col-span-4 h-fit lg:sticky lg:top-24">
+          <div className="lg:col-span-4 h-fit lg:sticky lg:top-28 space-y-6">
             {response ? (
-              <SuggestionsPanel suggestions={response.suggestions} />
+              <SuggestionsPanel 
+                suggestions={response.suggestions} 
+                userGoal={userGoal} 
+                onSelectPrompt={handleSuggestionPrompt}
+              />
             ) : (
-              <div className="bg-slate-100 rounded-xl p-8 border border-slate-200 flex flex-col items-center text-center">
-                 <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center mb-4 shadow-sm">
-                    <svg className="w-6 h-6 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+              <div className="bg-white rounded-[2rem] p-8 border border-slate-100 shadow-xl shadow-slate-100 flex flex-col items-center text-center relative overflow-hidden group">
+                 <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-violet-400 via-fuchsia-400 to-amber-400"></div>
+                 <div className={`w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mb-4 text-3xl shadow-sm rotate-3 transition-transform group-hover:rotate-6 ${userGoal ? 'ring-2 ring-violet-200' : ''}`}>
+                    💡
                  </div>
-                 <p className="text-sm font-medium text-slate-500">
-                    Submit your first query to unlock guru tips and improvement suggestions here.
+                 <h3 className="text-lg font-bold text-slate-800 mb-2">Guru's Corner</h3>
+                 <p className="text-slate-500 font-medium leading-relaxed">
+                    {userGoal 
+                      ? <span>Ready to provide tips for: <strong className="text-violet-600 block mt-1">{userGoal}</strong></span> 
+                      : "Ask a question to unlock personalized improvements and expert tips here!"}
                  </p>
               </div>
             )}
             
-            <div className="mt-6 bg-gradient-to-br from-indigo-600 to-violet-700 rounded-xl p-6 text-white shadow-lg">
-               <h3 className="font-bold mb-2">Pro Tip</h3>
-               <p className="text-sm opacity-90 leading-relaxed italic">
-                  "Don't worry about being perfect. Focus on being understood. Fluency comes from practice and making small improvements daily."
+            <div className="bg-gradient-to-br from-amber-400 to-orange-500 rounded-[2rem] p-6 text-white shadow-xl shadow-orange-100 transform hover:scale-[1.02] transition-transform cursor-default">
+               <div className="flex items-center gap-2 mb-3 opacity-90">
+                  <span className="text-xl">🔥</span>
+                  <h3 className="font-black uppercase tracking-wide text-sm">Pro Motivation</h3>
+               </div>
+               <p className="text-lg font-bold leading-relaxed">
+                  "Don't worry about being perfect. Focus on being understood. Fluency is a journey!"
                </p>
             </div>
           </div>
         </div>
       </main>
 
-      <footer className="bg-white border-t border-slate-200 py-8">
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <p className="text-sm text-slate-500 font-medium italic">
-            Developed with PhD-level pedagogical principles for Indian English learners.
-          </p>
-        </div>
+      <footer className="mt-auto py-8 text-center text-slate-400 text-sm font-medium">
+        <p>© {new Date().getFullYear()} English Guru • PhD-Pedagogy • Made with 💜</p>
       </footer>
     </div>
   );
