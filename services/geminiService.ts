@@ -4,15 +4,24 @@ import { SYSTEM_INSTRUCTION, DENIAL_MESSAGE } from "../constants.ts";
 import { PedagogicalResponse, ResponseMode } from "../types.ts";
 
 export class GeminiService {
-  async processQuery(query: string, overrideApiKey?: string): Promise<PedagogicalResponse> {
+  async processQuery(query: string, overrideApiKey?: string, userName?: string, userGoal?: string): Promise<PedagogicalResponse> {
     // Prefer the key from settings, fallback to environment variable
     const apiKey = overrideApiKey || process.env.API_KEY;
     const ai = new GoogleGenAI({ apiKey });
     
+    // Inject user name and goal into the prompt context if available
+    let contextHeader = '';
+    if (userName) contextHeader += `User Name: ${userName}\n`;
+    if (userGoal) contextHeader += `User Learning Goal: ${userGoal}\n`;
+
+    const finalPrompt = contextHeader 
+      ? `${contextHeader}\nQuery: ${query}` 
+      : query;
+
     try {
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
-        contents: query,
+        contents: finalPrompt,
         config: {
           systemInstruction: SYSTEM_INSTRUCTION,
           responseMimeType: "application/json",

@@ -8,6 +8,8 @@ import SettingsPanel from './components/SettingsPanel.tsx';
 
 const STORAGE_KEY_PROVIDER = 'eg_llm_provider';
 const STORAGE_KEY_API_KEY = 'eg_api_key';
+const STORAGE_KEY_USER_NAME = 'eg_user_name';
+const STORAGE_KEY_GOAL = 'eg_user_goal';
 
 const App: React.FC = () => {
   const [query, setQuery] = useState('');
@@ -19,21 +21,32 @@ const App: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [provider, setProvider] = useState<LLMProvider>(LLMProvider.GEMINI);
   const [userApiKey, setUserApiKey] = useState<string>('');
+  const [userName, setUserName] = useState<string>('');
+  const [userGoal, setUserGoal] = useState<string>('');
 
   // Load settings from session storage on mount
   useEffect(() => {
     const savedProvider = sessionStorage.getItem(STORAGE_KEY_PROVIDER);
     const savedKey = sessionStorage.getItem(STORAGE_KEY_API_KEY);
+    const savedName = sessionStorage.getItem(STORAGE_KEY_USER_NAME);
+    const savedGoal = sessionStorage.getItem(STORAGE_KEY_GOAL);
     
     if (savedProvider) setProvider(savedProvider as LLMProvider);
     if (savedKey) setUserApiKey(savedKey);
+    if (savedName) setUserName(savedName);
+    if (savedGoal) setUserGoal(savedGoal);
   }, []);
 
-  const handleSaveSettings = (newProvider: LLMProvider, newKey: string) => {
+  const handleSaveSettings = (newProvider: LLMProvider, newKey: string, newName: string, newGoal: string) => {
     setProvider(newProvider);
     setUserApiKey(newKey);
+    setUserName(newName);
+    setUserGoal(newGoal);
+    
     sessionStorage.setItem(STORAGE_KEY_PROVIDER, newProvider);
     sessionStorage.setItem(STORAGE_KEY_API_KEY, newKey);
+    sessionStorage.setItem(STORAGE_KEY_USER_NAME, newName);
+    sessionStorage.setItem(STORAGE_KEY_GOAL, newGoal);
   };
 
   const handleProcessQuery = async (e: React.FormEvent) => {
@@ -51,7 +64,7 @@ const App: React.FC = () => {
       
       const gemini = new GeminiService();
       // Service will use userApiKey if present, otherwise fallback to process.env.API_KEY
-      const result = await gemini.processQuery(trimmedQuery, userApiKey);
+      const result = await gemini.processQuery(trimmedQuery, userApiKey, userName, userGoal);
       setResponse(result);
     } catch (err: any) {
       console.error("Query Error:", err);
@@ -108,6 +121,8 @@ const App: React.FC = () => {
         onSave={handleSaveSettings}
         initialProvider={provider}
         initialKey={userApiKey}
+        initialName={userName}
+        initialGoal={userGoal}
       />
 
       <main className="flex-1 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
@@ -118,7 +133,7 @@ const App: React.FC = () => {
                 <textarea
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Ask me: 'Explain Present Continuous tense', 'How to sound professional in meetings?', etc."
+                  placeholder={userName ? `Ask me anything, ${userName}...` : "Ask me: 'Explain Present Continuous tense', 'How to sound professional in meetings?', etc."}
                   className="w-full h-32 bg-white border border-slate-200 rounded-xl p-6 shadow-sm focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all text-lg resize-none"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
@@ -177,7 +192,9 @@ const App: React.FC = () => {
                  </div>
                  <h2 className="text-2xl font-bold text-slate-800 mb-2">Ready to Learn?</h2>
                  <p className="text-slate-500 max-w-md">
-                    I'm your PhD-level English guru. Ask a question or paste a sentence, and I'll break it down with simple explanations and Hindi support!
+                    {userName 
+                      ? `Hi ${userName}! I'm your English guru.${userGoal ? ' I\'ll help you reach your goal: ' + userGoal : ''}` 
+                      : "I'm your PhD-level English guru. Ask a question or paste a sentence, and I'll break it down with simple explanations and Hindi support!"}
                  </p>
               </div>
             )}
