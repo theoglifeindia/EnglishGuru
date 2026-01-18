@@ -1,0 +1,7 @@
+{
+  "name": "English Guru - Master English Communication",
+  "description": "A PhD-level English Communication Coach with Hindi support, teaching spoken and written English through AI-driven pedagogy.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
