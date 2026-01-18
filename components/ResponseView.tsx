@@ -148,14 +148,14 @@ const ResponseView: React.FC<ResponseViewProps> = ({ response }) => {
                 <Avatar isSpeaking={isSpeaking} />
              </div>
              
-             <div className="h-24 flex items-center justify-center max-w-lg mb-8">
+             <div className="min-h-[6rem] flex items-center justify-center max-w-xl mb-8 px-4">
                 {isSpeaking ? (
                    <p className="text-xl text-white font-medium italic">
                      "{response.videoMetadata?.subtitles[videoSubtitleIndex] || response.audioScript}"
                    </p>
                 ) : (
                   <div className="text-indigo-400">
-                    <p className="text-lg font-bold mb-1">{response.videoMetadata?.scene || 'Practice Scenario'}</p>
+                    <p className="text-lg font-bold mb-2 leading-snug">{response.videoMetadata?.scene || 'Practice Scenario'}</p>
                     <p className="text-sm opacity-75">Click Start to begin simulation</p>
                   </div>
                 )}

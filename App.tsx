@@ -62,6 +62,14 @@ const App: React.FC = () => {
     }
   };
 
+  // Bilingual suggestion chips
+  const suggestionChips = [
+    { label: 'Explain "Tenses" (काल समझाएं)', query: 'Explain "Tenses" in Hindi' },
+    { label: 'Business Etiquette (बिज़नेस शिष्टाचार)', query: 'Business meeting etiquette' },
+    { label: 'Greeting Mistakes (अभिवादन की गलतियाँ)', query: 'Common greeting mistakes' },
+    { label: 'Self Introduction (अपना परिचय दें)', query: 'Interview self-introduction' }
+  ];
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
       <header className="bg-white border-b border-slate-200 sticky top-0 z-20 shadow-sm">
@@ -138,14 +146,14 @@ const App: React.FC = () => {
               </div>
 
               <div className="flex flex-wrap gap-2">
-                {['Explain "Tenses" in Hindi', 'Business meeting etiquette', 'Common greeting mistakes', 'Interview self-introduction'].map(p => (
+                {suggestionChips.map((chip) => (
                   <button
-                    key={p}
+                    key={chip.label}
                     type="button"
-                    onClick={() => setQuery(p)}
+                    onClick={() => setQuery(chip.query)}
                     className="text-xs font-semibold bg-white border border-slate-200 px-3 py-1.5 rounded-full text-slate-500 hover:border-indigo-300 hover:text-indigo-600 transition-colors shadow-sm"
                   >
-                    {p}
+                    {chip.label}
                   </button>
                 ))}
               </div>
