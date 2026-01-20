@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { LLMProvider } from '../types.ts';
+import { LLMProvider } from '../types';
 
 interface SettingsPanelProps {
   isOpen: boolean;
@@ -8,156 +8,159 @@ interface SettingsPanelProps {
   onSave: (provider: LLMProvider, key: string, name: string, goal: string) => void;
   initialProvider: LLMProvider;
   initialKey: string;
-  initialName?: string;
-  initialGoal?: string;
+  initialName: string;
+  initialGoal: string;
 }
 
-const GOAL_SUGGESTIONS = [
-  "Ace my Job Interview",
-  "Prepare for IELTS Speaking",
-  "Improve Business Emails",
-  "Travel Confidence"
-];
-
-const SettingsPanel: React.FC<SettingsPanelProps> = ({ 
-  isOpen, 
-  onClose, 
-  onSave, 
-  initialProvider, 
-  initialKey, 
-  initialName = '',
-  initialGoal = ''
+const SettingsPanel: React.FC<SettingsPanelProps> = ({
+  isOpen,
+  onClose,
+  onSave,
+  initialProvider,
+  initialKey,
+  initialName,
+  initialGoal
 }) => {
-  const [provider, setProvider] = useState<LLMProvider>(initialProvider);
-  const [apiKey, setApiKey] = useState<string>(initialKey);
-  const [userName, setUserName] = useState<string>(initialName);
-  const [userGoal, setUserGoal] = useState<string>(initialGoal);
-  const [showSuccess, setShowSuccess] = useState(false);
+  const [provider, setProvider] = useState(initialProvider);
+  const [apiKey, setApiKey] = useState(initialKey);
+  const [name, setName] = useState(initialName);
+  const [goal, setGoal] = useState(initialGoal);
 
+  // Sync state when props change
   useEffect(() => {
     if (isOpen) {
-      setProvider(initialProvider);
-      setApiKey(initialKey);
-      setUserName(initialName);
-      setUserGoal(initialGoal);
-      setShowSuccess(false);
+        setProvider(initialProvider);
+        setApiKey(initialKey);
+        setName(initialName);
+        setGoal(initialGoal);
     }
   }, [isOpen, initialProvider, initialKey, initialName, initialGoal]);
 
   const handleSave = () => {
-    onSave(provider, apiKey, userName, userGoal);
-    setShowSuccess(true);
-    setTimeout(() => {
-      setShowSuccess(false);
-      onClose();
-    }, 1500);
+    onSave(provider, apiKey, name, goal);
+    onClose();
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
-      <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-300 flex flex-col max-h-[90vh] ring-8 ring-white/20">
-        <div className="bg-violet-600 px-8 py-6 flex justify-between items-center text-white shrink-0">
-          <h2 className="text-2xl font-black flex items-center gap-3">
-            <span className="text-3xl">⚙️</span>
-            Setup Guru
-          </h2>
-          <button onClick={onClose} className="p-2 bg-white/20 hover:bg-white/30 rounded-xl transition-colors">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l18 18" />
-            </svg>
+    <>
+      {/* Backdrop */}
+      <div 
+        className={`fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-40 transition-opacity duration-300 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        onClick={onClose}
+      />
+
+      {/* Panel */}
+      <div 
+        className={`fixed inset-y-0 right-0 w-full sm:w-[480px] bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-out flex flex-col ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}
+      >
+        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-white">
+          <h2 className="text-2xl font-bold text-slate-800">Settings & Profile</h2>
+          <button 
+            onClick={onClose}
+            className="p-2 hover:bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
 
-        <div className="p-8 space-y-6 overflow-y-auto">
-          <div>
-            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Call Me</label>
-            <input
-              type="text"
-              value={userName}
-              onChange={(e) => setUserName(e.target.value)}
-              placeholder="e.g. Rahul"
-              className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 font-bold text-slate-700 focus:border-violet-500 focus:bg-white outline-none transition-all"
-            />
-          </div>
-
-          <div>
-            <div className="flex justify-between items-baseline mb-2 ml-1">
-              <label className="block text-xs font-black text-slate-400 uppercase tracking-widest">My Goal</label>
-              <span className={`text-[10px] font-bold ${userGoal.length > 90 ? 'text-amber-500' : 'text-slate-300'}`}>
-                {userGoal.length}/100 chars
-              </span>
+        <div className="flex-1 overflow-y-auto p-6 space-y-8">
+          
+          {/* User Profile Section */}
+          <section className="space-y-4">
+            <div className="flex items-center gap-2 text-violet-600 mb-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                <h3 className="text-sm font-bold uppercase tracking-wider">My Profile</h3>
             </div>
             
-            <div className="flex flex-wrap gap-2 mb-3">
-              {GOAL_SUGGESTIONS.map((suggestion) => (
-                <button
-                  key={suggestion}
-                  onClick={() => setUserGoal(suggestion)}
-                  className="text-[10px] font-bold uppercase tracking-wide bg-slate-100 text-slate-500 px-3 py-1.5 rounded-lg hover:bg-violet-100 hover:text-violet-600 transition-colors border border-slate-200"
-                >
-                  {suggestion}
-                </button>
-              ))}
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">What should I call you?</label>
+              <input 
+                type="text" 
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Rahul, Priya"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 outline-none transition-all"
+              />
             </div>
 
-            <textarea
-              value={userGoal}
-              onChange={(e) => setUserGoal(e.target.value)}
-              maxLength={100}
-              placeholder="e.g. I want to improve my presentation skills for work..."
-              rows={3}
-              className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 font-bold text-slate-700 focus:border-violet-500 focus:bg-white outline-none transition-all resize-none"
-            />
-          </div>
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">Why are you learning English?</label>
+              <textarea 
+                value={goal}
+                onChange={(e) => setGoal(e.target.value)}
+                placeholder="e.g. I have a job interview at an MNC next week, or I want to travel to Europe confidently."
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 outline-none transition-all h-32 resize-none"
+              />
+              <p className="text-xs text-slate-500 mt-2">
+                *The AI will use this goal to customize examples and role-play scenarios specifically for you.
+              </p>
+            </div>
+          </section>
 
-          <div>
-            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Brain Power</label>
-            <div className="relative">
-              <select
-                value={provider}
-                onChange={(e) => setProvider(e.target.value as LLMProvider)}
-                className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 font-bold text-slate-700 focus:border-violet-500 focus:bg-white outline-none transition-all appearance-none"
-              >
-                <option value={LLMProvider.GEMINI}>Google Gemini (Recommended)</option>
-                <option value={LLMProvider.CHATGPT}>OpenAI ChatGPT</option>
-              </select>
-              <div className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" /></svg>
+          <hr className="border-slate-100" />
+
+          {/* AI Config Section */}
+          <section className="space-y-4">
+            <div className="flex items-center gap-2 text-amber-500 mb-2">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                <h3 className="text-sm font-bold uppercase tracking-wider">AI Configuration</h3>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">AI Model Provider</label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setProvider(LLMProvider.GEMINI)}
+                  className={`px-4 py-3 rounded-xl border-2 font-semibold flex items-center justify-center gap-2 transition-all ${
+                    provider === LLMProvider.GEMINI 
+                    ? 'border-violet-600 bg-violet-50 text-violet-700' 
+                    : 'border-slate-100 bg-white text-slate-500 hover:border-slate-200'
+                  }`}
+                >
+                   Google Gemini
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setProvider(LLMProvider.CHATGPT)}
+                  disabled
+                  className={`px-4 py-3 rounded-xl border-2 font-semibold flex items-center justify-center gap-2 transition-all opacity-50 cursor-not-allowed ${
+                    provider === LLMProvider.CHATGPT
+                    ? 'border-violet-600 bg-violet-50 text-violet-700' 
+                    : 'border-slate-100 bg-slate-50 text-slate-400'
+                  }`}
+                >
+                   ChatGPT (Soon)
+                </button>
               </div>
             </div>
-          </div>
 
-          <div>
-            <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Secret Key</label>
-            <input
-              type="password"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder="sk-..."
-              className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 font-bold text-slate-700 focus:border-violet-500 focus:bg-white outline-none transition-all"
-            />
-          </div>
-
-          {showSuccess && (
-            <div className="bg-emerald-100 text-emerald-800 p-4 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 animate-bounce">
-              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" /></svg>
-              Saved Successfully!
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">API Key</label>
+              <input 
+                type="password"
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder="Paste your Gemini API Key"
+                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 outline-none transition-all"
+              />
+              <p className="text-xs text-slate-400 mt-2">
+                Keys are stored locally on your device for convenience.
+              </p>
             </div>
-          )}
+          </section>
+        </div>
 
-          <div className="pt-2">
-            <button
-              onClick={handleSave}
-              className="w-full bg-violet-600 hover:bg-violet-700 text-white font-black text-lg py-4 rounded-2xl shadow-xl shadow-violet-200 transition-all active:scale-95 hover:-translate-y-1"
-            >
-              Save & Close
-            </button>
-          </div>
+        <div className="p-6 border-t border-slate-100 bg-slate-50">
+          <button 
+            onClick={handleSave}
+            className="w-full py-4 bg-slate-900 hover:bg-violet-600 text-white rounded-xl font-bold text-lg shadow-lg hover:shadow-violet-200 hover:-translate-y-1 transition-all active:scale-95"
+          >
+            Save Changes
+          </button>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 

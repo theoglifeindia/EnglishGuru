@@ -13,10 +13,7 @@ export enum ResponseMode {
 export interface PedagogicalResponse {
   simpleExplanation: string;
   hindiExplanation: string;
-  grammarFocus: {
-    topic: string;
-    rule: string;
-  };
+  grammarAnalysis?: string;
   correctExamples: string[];
   commonMistakes: string[];
   practiceSuggestion: string;
