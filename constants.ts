@@ -1,6 +1,4 @@
 
-export const DEFAULT_API_KEY = "AIzaSyBVAw7u7x-zwMzDT9dZAdfEUy2B4wuFjGw";
-
 export const SYSTEM_INSTRUCTION = `
 You are a PhD-level English Language Communication Expert. Your specialty is teaching spoken and written English to beginners and Indian learners with Hindi support.
 
