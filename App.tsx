@@ -1,14 +1,11 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { PedagogicalResponse, ResponseMode, LLMProvider } from './types';
 import { GeminiService } from './services/geminiService';
 import ResponseView from './components/ResponseView';
 import SuggestionsPanel from './components/SuggestionsPanel';
 import SettingsPanel from './components/SettingsPanel';
-import { DEFAULT_API_KEY } from './constants';
 
 const STORAGE_KEY_PROVIDER = 'eg_llm_provider';
-const STORAGE_KEY_API_KEY = 'eg_api_key';
 const STORAGE_KEY_USER_NAME = 'eg_user_name';
 const STORAGE_KEY_GOAL = 'eg_user_goal';
 
@@ -29,7 +26,6 @@ const App: React.FC = () => {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [provider, setProvider] = useState<LLMProvider>(LLMProvider.GEMINI);
   // Initialize with Default Key
-  const [userApiKey, setUserApiKey] = useState<string>(DEFAULT_API_KEY);
   const [userName, setUserName] = useState<string>('');
   const [userGoal, setUserGoal] = useState<string>('');
 
@@ -46,14 +42,7 @@ const App: React.FC = () => {
     const savedName = localStorage.getItem(STORAGE_KEY_USER_NAME);
     const savedGoal = localStorage.getItem(STORAGE_KEY_GOAL);
     
-    // Session-only settings (sessionStorage)
-    const savedKey = sessionStorage.getItem(STORAGE_KEY_API_KEY);
-    
     if (savedProvider) setProvider(savedProvider as LLMProvider);
-    if (savedKey) {
-        setUserApiKey(savedKey);
-    } 
-    // If no saved key, it remains DEFAULT_API_KEY from initial state
     
     if (savedName) setUserName(savedName);
     if (savedGoal) setUserGoal(savedGoal);
@@ -61,14 +50,13 @@ const App: React.FC = () => {
 
   // Effect to refresh chips when goal/key is available and it's the initial load or goal changed
   useEffect(() => {
-      if (userApiKey && userGoal) {
-          refreshChips(userGoal, userApiKey);
+      if (userGoal) {
+          refreshChips(userGoal);
       }
-  }, [userApiKey, userGoal]);
+  }, [userGoal]);
 
-  const handleSaveSettings = (newProvider: LLMProvider, newKey: string, newName: string, newGoal: string) => {
+  const handleSaveSettings = (newProvider: LLMProvider, newName: string, newGoal: string) => {
     setProvider(newProvider);
-    setUserApiKey(newKey);
     setUserName(newName);
     setUserGoal(newGoal);
     
@@ -77,22 +65,19 @@ const App: React.FC = () => {
     localStorage.setItem(STORAGE_KEY_USER_NAME, newName);
     localStorage.setItem(STORAGE_KEY_GOAL, newGoal);
     
-    // Save API key to sessionStorage (cleared when tab closes)
-    sessionStorage.setItem(STORAGE_KEY_API_KEY, newKey);
-    
     // Trigger chip refresh if goal is updated
-    if (newKey && newGoal && newGoal !== userGoal) {
-        refreshChips(newGoal, newKey);
+    if (newGoal && newGoal !== userGoal) {
+        refreshChips(newGoal);
     }
   };
 
-  const refreshChips = async (goal: string, apiKey: string) => {
-    if (!goal || !apiKey) return;
+  const refreshChips = async (goal: string) => {
+    if (!goal) return;
     
     setIsRefreshingChips(true);
     try {
       const gemini = new GeminiService();
-      const newPrompts = await gemini.fetchStarterPrompts(goal, apiKey);
+      const newPrompts = await gemini.fetchStarterPrompts(goal);
       
       if (newPrompts && newPrompts.length > 0) {
         const colors = [
@@ -130,7 +115,7 @@ const App: React.FC = () => {
       }
       
       const gemini = new GeminiService();
-      const result = await gemini.processQuery(trimmedQuery, userApiKey, userName, userGoal);
+      const result = await gemini.processQuery(trimmedQuery, userName, userGoal);
       setResponse(result);
     } catch (err: any) {
       console.error("Query Error:", err);
@@ -183,7 +168,6 @@ const App: React.FC = () => {
         onClose={() => setIsSettingsOpen(false)} 
         onSave={handleSaveSettings}
         initialProvider={provider}
-        initialKey={userApiKey}
         initialName={userName}
         initialGoal={userGoal}
       />
@@ -243,8 +227,8 @@ const App: React.FC = () => {
               
               <button
                 type="button"
-                onClick={() => refreshChips(userGoal, userApiKey)}
-                disabled={isRefreshingChips || !userGoal || !userApiKey}
+                onClick={() => refreshChips(userGoal)}
+                disabled={isRefreshingChips || !userGoal}
                 className={`ml-auto p-2 rounded-xl transition-all active:scale-95 disabled:opacity-50 ${isRefreshingChips ? 'bg-violet-100 text-violet-600' : 'bg-slate-100 hover:bg-violet-100 text-slate-500 hover:text-violet-600'}`}
                 title={userGoal ? "Refresh Topics aligned to Goal" : "Set a Goal in settings to enable"}
               >

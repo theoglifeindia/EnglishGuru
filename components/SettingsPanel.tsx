@@ -1,13 +1,11 @@
-
 import React, { useState, useEffect } from 'react';
 import { LLMProvider } from '../types';
 
 interface SettingsPanelProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (provider: LLMProvider, key: string, name: string, goal: string) => void;
+  onSave: (provider: LLMProvider, name: string, goal: string) => void;
   initialProvider: LLMProvider;
-  initialKey: string;
   initialName: string;
   initialGoal: string;
 }
@@ -17,12 +15,10 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   onClose,
   onSave,
   initialProvider,
-  initialKey,
   initialName,
   initialGoal
 }) => {
   const [provider, setProvider] = useState(initialProvider);
-  const [apiKey, setApiKey] = useState(initialKey);
   const [name, setName] = useState(initialName);
   const [goal, setGoal] = useState(initialGoal);
 
@@ -30,14 +26,13 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
   useEffect(() => {
     if (isOpen) {
         setProvider(initialProvider);
-        setApiKey(initialKey);
         setName(initialName);
         setGoal(initialGoal);
     }
-  }, [isOpen, initialProvider, initialKey, initialName, initialGoal]);
+  }, [isOpen, initialProvider, initialName, initialGoal]);
 
   const handleSave = () => {
-    onSave(provider, apiKey, name, goal);
+    onSave(provider, name, goal);
     onClose();
   };
 
@@ -133,20 +128,6 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
                    ChatGPT (Soon)
                 </button>
               </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">API Key</label>
-              <input 
-                type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                placeholder="Paste your Gemini API Key"
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 outline-none transition-all"
-              />
-              <p className="text-xs text-slate-400 mt-2">
-                Keys are stored locally on your device for convenience.
-              </p>
             </div>
           </section>
         </div>

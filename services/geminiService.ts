@@ -1,26 +1,15 @@
-
 import { GoogleGenAI, Type } from "@google/genai";
-import { SYSTEM_INSTRUCTION, DENIAL_MESSAGE, DEFAULT_API_KEY } from "../constants";
+import { SYSTEM_INSTRUCTION, DENIAL_MESSAGE } from "../constants";
 import { PedagogicalResponse, ResponseMode } from "../types";
 
 export class GeminiService {
   private ai: GoogleGenAI;
 
   constructor() {
-    // We instantiate lightly here, but the specific call uses the key
-    // Fallback to DEFAULT_API_KEY if process.env.API_KEY is not set
-    this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY || DEFAULT_API_KEY });
+    this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   }
 
-  async processQuery(query: string, apiKey: string, userName?: string, userGoal?: string): Promise<PedagogicalResponse> {
-    // Use provided key, or fallback to default
-    const effectiveKey = apiKey || DEFAULT_API_KEY;
-    
-    if (!effectiveKey) throw new Error("API Key is missing.");
-    
-    // Re-instantiate with the user-provided key
-    const ai = new GoogleGenAI({ apiKey: effectiveKey });
-
+  async processQuery(query: string, userName?: string, userGoal?: string): Promise<PedagogicalResponse> {
     // Construct Contextual Prompt
     let contextInstruction = "";
     if (userName) {
@@ -33,7 +22,7 @@ export class GeminiService {
     const fullSystemInstruction = SYSTEM_INSTRUCTION + contextInstruction;
 
     try {
-      const response = await ai.models.generateContent({
+      const response = await this.ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: query,
         config: {
@@ -98,15 +87,11 @@ export class GeminiService {
   }
   
   // Helper to fetch starter prompts based on goal
-  async fetchStarterPrompts(userGoal: string, apiKey: string): Promise<{label: string, query: string}[]> {
+  async fetchStarterPrompts(userGoal: string): Promise<{label: string, query: string}[]> {
       if (!userGoal) return [];
       
-      const effectiveKey = apiKey || DEFAULT_API_KEY;
-      if (!effectiveKey) return [];
-
-      const ai = new GoogleGenAI({ apiKey: effectiveKey });
       try {
-        const response = await ai.models.generateContent({
+        const response = await this.ai.models.generateContent({
             model: 'gemini-3-flash-preview',
             contents: `The user has a specific goal for learning English: "${userGoal}".
             Generate 4 distinct, engaging practice scenarios or questions aligned with this goal.
